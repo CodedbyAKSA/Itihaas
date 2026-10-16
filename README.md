@@ -211,8 +211,12 @@ by setting `DATABASE_URL`.
   is a symlink to `website/static`: Vercel serves `public/` from its CDN, so images, CSS and video don't
   go through the function. (The folder has to exist in the repo; one created by a build command is not
   picked up.)
-- On Vercel the SQLite database and uploads live in `/tmp` (fresh on each cold start; the shop is
-  seeded automatically). Set `DATABASE_URL` for persistent data.
+- Database: set `DATABASE_URL` (or connect a Postgres store under the Vercel project's Storage tab,
+  which sets `POSTGRES_URL`) and the tables are created and the shop seeded on first start. Without
+  one, each Vercel instance uses its own SQLite file in `/tmp`: fine for a quick look, but accounts
+  and bookings don't carry across instances or cold starts. Uploads always go to `/tmp` on Vercel.
+- The map uses Google Maps when `GOOGLE_MAPS_API_KEY` is set and accepted, and falls back to
+  OpenStreetMap (sites only, no directions) when it isn't.
 - The pages use web-sized videos from `website/static/media` (about 30 MB in total, versus over 300 MB
   for the originals, which stay in Git LFS).
 - Phones: `static/css/mobile.css` adds the compact header, stacked map controls, swipeable shop

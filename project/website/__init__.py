@@ -2,9 +2,10 @@ from flask import Flask, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from os import path
-from flask_login import LoginManager, current_user
+from flask_login import LoginManager, current_user, user_logged_in, user_logged_out
 import os
 import sys
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from website.translations import translations
 from website.chatbot import chatbot_bp
@@ -23,6 +24,19 @@ ON_VERCEL = bool(os.environ.get('VERCEL'))
 RUNTIME_DIR = os.environ.get('ITIHAAS_RUNTIME_DIR', '/tmp/itihaas')
 
 
+def database_url_from_env():
+    """DATABASE_URL, or POSTGRES_URL as set by Vercel's Postgres integrations."""
+    url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+    if not url:
+        return None
+    if url.startswith('postgres://'):
+        url = 'postgresql://' + url[len('postgres://'):]
+    # The Supabase integration adds `supa=...`, which libpq rejects.
+    parts = urlsplit(url)
+    query = [(k, v) for k, v in parse_qsl(parts.query) if k != 'supa']
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
 def mail_configured():
     return bool(os.environ.get('EMAIL_USER') and os.environ.get('EMAIL_PASSWORD'))
 
@@ -30,8 +44,17 @@ def create_app(config_class=config.Config):  # Updated to use config.Config
     app = Flask(__name__)
     app.config.from_object(config_class)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'hjshjhdjah kjshkjdhjs')
-    if os.environ.get('DATABASE_URL'):
-        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+    database_url = database_url_from_env()
+    if database_url:
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+        # Serverless instances come and go: keep few connections per instance
+        # and drop ones the pooler has closed.
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'pool_size': 2,
+            'max_overflow': 2,
+            'pool_recycle': 300,
+        }
     elif ON_VERCEL:
         os.makedirs(RUNTIME_DIR, exist_ok=True)
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{RUNTIME_DIR}/{DB_NAME}'
@@ -118,7 +141,22 @@ def create_app(config_class=config.Config):  # Updated to use config.Config
 
     @login_manager.user_loader
     def load_user(id):
-        return User.query.get(int(id))
+        user = User.query.get(int(id))
+        # Without DATABASE_URL, each Vercel instance has its own SQLite file in
+        # /tmp, so the same id can be a different person on another instance.
+        # Only accept the account this session logged in as.
+        expected = session.get('user_email')
+        if user and expected and user.email != expected:
+            return None
+        return user
+
+    @user_logged_in.connect_via(app)
+    def remember_login_email(sender, user, **extra):
+        session['user_email'] = user.email
+
+    @user_logged_out.connect_via(app)
+    def forget_login_email(sender, user, **extra):
+        session.pop('user_email', None)
 
     # Translation helper
     @app.context_processor
