@@ -238,6 +238,15 @@
   }
 }
 
+/* ---------- News ---------- */
+@media (max-width: 767.98px) {
+  /* Keep each story's picture to a banner so several fit per screen. */
+  #newsGrid .card-img-top {
+    height: 150px;
+    object-fit: cover;
+  }
+}
+
 /* ---------- Booking ---------- */
 @media (max-width: 767.98px) {
   .sound-toggle {

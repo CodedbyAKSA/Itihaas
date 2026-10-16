@@ -188,7 +188,7 @@ def _fetch_google_news_rss(query):
             continue
         articles.append({
             "title": title,
-            "description": f"Reported by {source}.",
+            "description": "",
             "url": item.findtext("link") or "",
             "urlToImage": "",
             "source": {"name": source},
