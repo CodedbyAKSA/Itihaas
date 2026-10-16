@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
 from .email_utils import send_verification_email
+from . import mail_configured
 
 
 auth = Blueprint('auth', __name__)
@@ -87,6 +88,14 @@ def sign_up():
             db.session.add(new_user)
             db.session.commit()
             
+            # Without a mail account (e.g. the public demo) there is no way to
+            # deliver a code, so the account is verified straight away.
+            if not mail_configured():
+                new_user.is_verified = True
+                db.session.commit()
+                flash('Account created! Email verification is off on this demo, so you can log in now.', category='success')
+                return redirect(url_for('auth.login'))
+
             # Generate and send verification code
             verification_code = new_user.generate_verification_code()
             db.session.commit()

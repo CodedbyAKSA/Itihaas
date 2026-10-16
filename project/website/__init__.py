@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from os import path
 from flask_login import LoginManager, current_user
-import spacy
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,15 +17,30 @@ db = SQLAlchemy()
 migrate = Migrate()
 DB_NAME = "database.db"
 
-# Load spaCy English model
-nlp = spacy.load("en_core_web_sm")
+# On Vercel the deployment bundle is read-only; only /tmp is writable, and it
+# starts empty on each cold start.
+ON_VERCEL = bool(os.environ.get('VERCEL'))
+RUNTIME_DIR = os.environ.get('ITIHAAS_RUNTIME_DIR', '/tmp/itihaas')
+
+
+def mail_configured():
+    return bool(os.environ.get('EMAIL_USER') and os.environ.get('EMAIL_PASSWORD'))
 
 def create_app(config_class=config.Config):  # Updated to use config.Config
     app = Flask(__name__)
     app.config.from_object(config_class)
-    app.config['SECRET_KEY'] = 'hjshjhdjah kjshkjdhjs'
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
-    app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'hjshjhdjah kjshkjdhjs')
+    if os.environ.get('DATABASE_URL'):
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+    elif ON_VERCEL:
+        os.makedirs(RUNTIME_DIR, exist_ok=True)
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{RUNTIME_DIR}/{DB_NAME}'
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+    if ON_VERCEL:
+        app.config['UPLOAD_FOLDER'] = os.path.join(RUNTIME_DIR, 'uploads')
+    else:
+        app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
     
     # Add Google Maps API key configuration
     app.config['GOOGLE_MAPS_API_KEY'] = os.environ.get('GOOGLE_MAPS_API_KEY', '')
@@ -64,6 +78,8 @@ def create_app(config_class=config.Config):  # Updated to use config.Config
 
     try:
         mail.init_app(app)
+        if not (email_user and email_password):
+            raise RuntimeError("email not configured; skipping SMTP check")
         with app.app_context():
             # Test email configuration
             mail.connect()
@@ -115,6 +131,15 @@ def create_app(config_class=config.Config):  # Updated to use config.Config
     @app.context_processor
     def inject_user():
         return dict(user=current_user)
+
+    # Service worker at the site root so it controls every page (a worker
+    # served from /static/ could only control /static/).
+    @app.route('/sw.js')
+    def service_worker():
+        from flask import send_from_directory
+        response = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
+        response.headers['Cache-Control'] = 'no-cache'
+        return response
 
     # Language switcher route
     @app.route('/change-language', methods=['POST'])

@@ -1,0 +1,9 @@
+# Full-size originals live in Git LFS; the site uses the web-sized copies in
+# website/static/media. Uploads and the local SQLite database hold user data.
+website/static/*.mp4
+website/static/*.MP4
+website/static/uploads/
+instance/
+email.log
+test_whatsapp.py
+__pycache__/

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "mkdir -p public && cp -r website/static public/static",
+  "functions": {
+    "main.py": {
+      "excludeFiles": "{website/static/**/*.{mp4,MP4,mp3,jpg,jpeg,JPG,png,webp,avif,gif},instance/**}"
+    }
+  }
+}

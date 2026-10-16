@@ -137,13 +137,13 @@ h1 {
 </style>
 
 <!-- Background Video -->
-<video autoplay muted loop playsinline class="bg-video">
-  <source src="{{ url_for('static', filename='videoplayback .mp4') }}" type="video/mp4" />
+<video autoplay muted loop playsinline class="bg-video" poster="{{ url_for('static', filename='media/videoplayback-poster.jpg') }}">
+  <source src="{{ url_for('static', filename='media/videoplayback.mp4') }}" type="video/mp4" />
 </video>
 
 <!-- Add this after the background video -->
 <audio id="bg-audio" loop>
-    <source src="{{ url_for('static', filename='videoplayback .mp4') }}" type="audio/mp3">
+    <source src="{{ url_for('static', filename='media/videoplayback.mp4') }}" type="audio/mp3">
 </audio>
 
 <!-- Add audio control button -->

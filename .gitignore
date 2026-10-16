@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.env
+venv/
+.venv/
+# Vercel build output (project/vercel.json copies website/static here)
+project/public/

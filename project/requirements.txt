@@ -4,13 +4,11 @@ Flask-Login==0.6.3
 Flask-WTF==1.2.1
 Flask-Babel==4.0.0
 Werkzeug==3.0.1
-SQLAlchemy==2.0.28
+SQLAlchemy==2.0.36
 python-dotenv==1.0.1
 email-validator==2.1.0.post1
 requests==2.31.0
-pywhatkit==5.4
 flask_migrate
-spacy
 flask_mail
 schedule
 flask

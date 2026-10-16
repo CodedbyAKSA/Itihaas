@@ -1,0 +1,5 @@
+# Optional: WhatsApp booking confirmations through a logged-in WhatsApp Web
+# session. pywhatkit drives the desktop browser, so this only works on a
+# machine with a display; servers skip it (see website/whatsapp.py).
+-r requirements.txt
+pywhatkit==5.4

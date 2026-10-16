@@ -198,8 +198,25 @@ itihaas/
 - `GOOGLE_MAPS_API_KEY`: Google Maps API key
 - `GNEWS_API_KEY`: GNews API key for news integration
 
+All of these are read from the environment (or `project/.env`); nothing is hard-coded.
+Without `EMAIL_USER`/`EMAIL_PASSWORD`, sign-up skips the emailed verification code.
+
 ### Database Configuration
-The application uses SQLite by default for development. For production, you can configure other databases like PostgreSQL or MySQL.
+The application uses SQLite by default for development. For production, you can configure other databases like PostgreSQL or MySQL
+by setting `DATABASE_URL`.
+
+## 🌐 Hosting (Vercel) and mobile
+
+- `project/vercel.json` deploys the Flask app with `project/` as the root directory. The build copies
+  `website/static` to `public/static`, so images, CSS and video come from the CDN, not the function.
+- On Vercel the SQLite database and uploads live in `/tmp` (fresh on each cold start; the shop is
+  seeded automatically). Set `DATABASE_URL` for persistent data.
+- The pages use web-sized videos from `website/static/media` (about 30 MB in total, versus over 300 MB
+  for the originals, which stay in Git LFS).
+- Phones: `static/css/mobile.css` adds the compact header, stacked map controls, swipeable shop
+  categories and readable text. The site is installable as an app (web manifest, icons, service worker
+  with an offline page): "Add to Home Screen" on iOS, "Install app" on Android.
+- WhatsApp confirmations (pywhatkit) need a desktop with a display: `pip install -r requirements-whatsapp.txt`.
 
 ## 📱 API Endpoints
 

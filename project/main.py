@@ -13,22 +13,27 @@ import threading
 # Environment Configuration
 # --------------------------
 
-# Email credentials (use environment variables in production)
-os.environ['EMAIL_USER'] = os.environ.get('EMAIL_USER', 'itihaasdairy@gmail.com')
-os.environ['EMAIL_PASSWORD'] = os.environ.get('EMAIL_PASSWORD', 'opuo ywpj izjy qnxf')  
-
-# Google Maps API key
-GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', "AIzaSyBygM66vagm5UY7vMN_mHOiUdNNZmidvZQ")
-os.environ['GOOGLE_MAPS_API_KEY'] = GOOGLE_MAPS_API_KEY
+# Credentials come from the environment (.env locally, project settings when
+# deployed): EMAIL_USER, EMAIL_PASSWORD, GOOGLE_MAPS_API_KEY, GNEWS_API_KEY.
+# Never put real values in this file; the repository is public.
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Gnews API configuration
-GNEWS_API_KEY = os.environ.get('GNEWS_API_KEY', "4036a646f52401f9c151f4850ad306aa")
+GNEWS_API_KEY = os.environ.get('GNEWS_API_KEY', '')
 GNEWS_API_URL = "https://gnews.io/api/v4/search"
 
 # --------------------------
 # Create Flask App
 # --------------------------
 app = create_app()
+
+# A serverless instance starts with an empty database in /tmp, so seed the
+# shop on import there (locally this happens under __main__ below).
+if os.environ.get('VERCEL'):
+    with app.app_context():
+        db.create_all()
+        add_clothing_items()
 
 # --------------------------
 # News Routes
