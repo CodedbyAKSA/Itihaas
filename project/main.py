@@ -8,6 +8,7 @@ from website.merchandise_data import add_clothing_items
 from website.automated_messaging import start_scheduler
 import requests
 import threading
+import time
 
 # --------------------------
 # Environment Configuration
@@ -51,10 +52,40 @@ def api_news():
     news_data = fetch_news(query)
     return jsonify({"articles": news_data})
 
+# GNews' free plan allows 100 requests a day, so results are cached per
+# query. After a failure the cache holds the last good result (or nothing)
+# for a few minutes instead of retrying on every page view.
+NEWS_TTL_SECONDS = 30 * 60
+NEWS_RETRY_SECONDS = 5 * 60
+_news_cache = {}
+
+
 def fetch_news(query):
+    now = time.time()
+    cached = _news_cache.get(query)
+    if cached and now < cached['expires']:
+        return cached['articles']
+
+    articles = _fetch_news_uncached(query)
+    if articles is None:
+        stale = cached['articles'] if cached else []
+        _news_cache[query] = {'articles': stale, 'expires': now + NEWS_RETRY_SECONDS}
+        return stale
+
+    if len(_news_cache) > 50:
+        _news_cache.clear()
+    _news_cache[query] = {'articles': articles, 'expires': now + NEWS_TTL_SECONDS}
+    return articles
+
+
+def _fetch_news_uncached(query):
     """
     Fetch news from Gnews API with fallback for broader search if no results.
+    Returns None if the request failed.
     """
+    if not GNEWS_API_KEY:
+        print("Error fetching news: GNEWS_API_KEY is not set")
+        return None
     try:
         params = {
             "q": query,
@@ -65,7 +96,7 @@ def fetch_news(query):
             "sortby": "publishedAt",
             "in": "title,description"
         }
-        response = requests.get(GNEWS_API_URL, params=params)
+        response = requests.get(GNEWS_API_URL, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         articles = data.get("articles", [])
@@ -90,7 +121,7 @@ def fetch_news(query):
         # Fallback if no articles
         if not transformed_articles:
             params["q"] = "Indian tourism OR Indian monuments"
-            response = requests.get(GNEWS_API_URL, params=params)
+            response = requests.get(GNEWS_API_URL, params=params, timeout=10)
             response.raise_for_status()
             articles = response.json().get("articles", [])
             transformed_articles = [
@@ -107,9 +138,13 @@ def fetch_news(query):
 
         return transformed_articles
 
+    except requests.HTTPError as e:
+        # Not str(e): it contains the request URL, and with it the API key.
+        print(f"Error fetching news: GNews returned HTTP {e.response.status_code}")
+        return None
     except Exception as e:
-        print(f"Error fetching news: {str(e)}")
-        return []
+        print(f"Error fetching news: {type(e).__name__}")
+        return None
 
 # --------------------------
 # Background Tasks
