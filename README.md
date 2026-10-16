@@ -207,8 +207,10 @@ by setting `DATABASE_URL`.
 
 ## 🌐 Hosting (Vercel) and mobile
 
-- `project/vercel.json` deploys the Flask app with `project/` as the root directory. The build copies
-  `website/static` to `public/static`, so images, CSS and video come from the CDN, not the function.
+- `project/vercel.json` deploys the Flask app with `project/` as the root directory. `project/public/static`
+  is a symlink to `website/static`: Vercel serves `public/` from its CDN, so images, CSS and video don't
+  go through the function. (The folder has to exist in the repo; one created by a build command is not
+  picked up.)
 - On Vercel the SQLite database and uploads live in `/tmp` (fresh on each cold start; the shop is
   seeded automatically). Set `DATABASE_URL` for persistent data.
 - The pages use web-sized videos from `website/static/media` (about 30 MB in total, versus over 300 MB
