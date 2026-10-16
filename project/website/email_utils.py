@@ -9,22 +9,25 @@ def setup_email_logging():
     logger = logging.getLogger('email_utils')
     logger.setLevel(logging.DEBUG)
     
-    # Create handlers
-    c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler('email.log')
-    c_handler.setLevel(logging.DEBUG)
-    f_handler.setLevel(logging.DEBUG)
-    
-    # Create formatters and add it to handlers
     format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    c_format = logging.Formatter(format_str)
-    f_format = logging.Formatter(format_str)
-    c_handler.setFormatter(c_format)
-    f_handler.setFormatter(f_format)
-    
-    # Add handlers to the logger
+
+    # Console handler: on Vercel this is what ends up in the function logs.
+    c_handler = logging.StreamHandler()
+    c_handler.setLevel(logging.DEBUG)
+    c_handler.setFormatter(logging.Formatter(format_str))
     logger.addHandler(c_handler)
-    logger.addHandler(f_handler)
+
+    # email.log next to the app when the folder is writable. Serverless
+    # bundles are read-only, so skip it there instead of failing to import.
+    if not os.environ.get('VERCEL'):
+        try:
+            f_handler = logging.FileHandler('email.log')
+        except OSError:
+            f_handler = None
+        if f_handler:
+            f_handler.setLevel(logging.DEBUG)
+            f_handler.setFormatter(logging.Formatter(format_str))
+            logger.addHandler(f_handler)
     
     return logger
 
