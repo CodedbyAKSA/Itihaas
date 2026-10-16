@@ -217,6 +217,10 @@ by setting `DATABASE_URL`.
   and bookings don't carry across instances or cold starts. Uploads always go to `/tmp` on Vercel.
 - The map uses Google Maps when `GOOGLE_MAPS_API_KEY` is set and accepted, and falls back to
   OpenStreetMap (sites only, no directions) when it isn't.
+- News comes from GNews when `GNEWS_API_KEY` works and from Google News RSS (no key) otherwise;
+  results are cached for 30 minutes.
+- The admin login (`itihaasdairy@gmail.com`) uses the password in `ADMIN_PASSWORD`; without it the
+  admin login is disabled. The live deployment runs in Vercel's Sydney region, next to the database.
 - The pages use web-sized videos from `website/static/media` (about 30 MB in total, versus over 300 MB
   for the originals, which stay in Git LFS).
 - Phones: `static/css/mobile.css` adds the compact header, stacked map controls, swipeable shop

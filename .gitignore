@@ -3,3 +3,5 @@ __pycache__/
 .env
 venv/
 .venv/
+# Local SQLite database (user data; never commit)
+project/instance/

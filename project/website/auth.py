@@ -1,3 +1,5 @@
+import hmac
+import os
 from flask import Blueprint, Flask, render_template, request, flash, redirect, url_for, session, jsonify
 from .models import User, Guide, ItihaasCoins, Transaction
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,8 +18,11 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
 
-        # Special case for admin user
-        if email == 'itihaasdairy@gmail.com' and password == '12345678':
+        # Special case for admin user. The password comes from ADMIN_PASSWORD;
+        # without it the admin login is off (the old one was public in this repo).
+        admin_password = os.environ.get('ADMIN_PASSWORD', '')
+        if (email == 'itihaasdairy@gmail.com' and admin_password
+                and hmac.compare_digest((password or '').encode(), admin_password.encode())):
             # Create or get admin user
             admin_user = User.query.filter_by(email=email).first()
             if not admin_user:

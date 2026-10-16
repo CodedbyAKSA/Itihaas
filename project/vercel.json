@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "syd1"
+  ],
   "functions": {
     "main.py": {
       "excludeFiles": "{website/static/**/*.{mp4,MP4,mp3,jpg,jpeg,JPG,png,webp,avif,gif},instance/**}"

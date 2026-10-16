@@ -9,6 +9,8 @@ from website.automated_messaging import start_scheduler
 import requests
 import threading
 import time
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
 
 # --------------------------
 # Environment Configuration
@@ -33,8 +35,12 @@ app = create_app()
 # shop on import there (locally this happens under __main__ below).
 if os.environ.get('VERCEL'):
     with app.app_context():
-        db.create_all()
-        add_clothing_items()
+        try:
+            db.create_all()
+            add_clothing_items()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Database setup failed: {type(e).__name__}: {e}")
 
 # --------------------------
 # News Routes
@@ -67,6 +73,8 @@ def fetch_news(query):
         return cached['articles']
 
     articles = _fetch_news_uncached(query)
+    if articles is None:
+        articles = _fetch_google_news_rss(query)
     if articles is None:
         stale = cached['articles'] if cached else []
         _news_cache[query] = {'articles': stale, 'expires': now + NEWS_RETRY_SECONDS}
@@ -145,6 +153,52 @@ def _fetch_news_uncached(query):
     except Exception as e:
         print(f"Error fetching news: {type(e).__name__}")
         return None
+
+GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search"
+
+
+def _fetch_google_news_rss(query):
+    """
+    Google News RSS needs no API key. Used when GNews has no key, is out of
+    quota or fails. Returns None if this fails too.
+    """
+    rss_query = query.replace(" AND ", " ") + " when:60d"
+    try:
+        response = requests.get(
+            GOOGLE_NEWS_RSS_URL,
+            params={"q": rss_query, "hl": "en-IN", "gl": "IN", "ceid": "IN:en"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        items = ET.fromstring(response.content).findall("./channel/item")
+    except Exception as e:
+        print(f"Error fetching Google News RSS: {type(e).__name__}")
+        return None
+
+    articles = []
+    for item in items:
+        source = (item.findtext("source") or "Google News").strip()
+        title = (item.findtext("title") or "").strip()
+        # Titles end with " - <source>", which the card shows separately.
+        if title.endswith(" - " + source):
+            title = title[: -len(" - " + source)]
+        try:
+            published = parsedate_to_datetime(item.findtext("pubDate"))
+        except (TypeError, ValueError):
+            continue
+        articles.append({
+            "title": title,
+            "description": f"Reported by {source}.",
+            "url": item.findtext("link") or "",
+            "urlToImage": "",
+            "source": {"name": source},
+            "publishedAt": published.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "_published": published,
+        })
+    articles.sort(key=lambda a: a["_published"], reverse=True)
+    for article in articles:
+        del article["_published"]
+    return articles[:12]
 
 # --------------------------
 # Background Tasks
