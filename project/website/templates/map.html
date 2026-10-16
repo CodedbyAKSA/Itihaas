@@ -1136,6 +1136,15 @@
         border-color: #f1683a;
     }
 
+    /* The floating panel beside the map is too narrow for four buttons in a
+       row on desktop; on phones the panel is full width and they fit. */
+    @media (min-width: 768px) {
+        .travel-modes {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
     .audio-narration {
         background: rgba(241, 104, 58, 0.1);
         padding: 15px;
